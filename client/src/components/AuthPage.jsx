@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { FiMail, FiLock, FiUser, FiMessageSquare } from 'react-icons/fi';
+import { FcGoogle } from 'react-icons/fc';
+import { isFirebaseConfigured, auth, googleProvider, signInWithPopup } from '../firebase';
 
 export default function AuthPage({ onAuthSuccess, serverUrl }) {
   const [isLogin, setIsLogin] = useState(true);
@@ -38,6 +40,45 @@ export default function AuthPage({ onAuthSuccess, serverUrl }) {
       onAuthSuccess(data.token, data.user);
     } catch (err) {
       setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError('');
+    setLoading(true);
+
+    try {
+      if (!isFirebaseConfigured || !auth || !googleProvider) {
+        throw new Error('Firebase Authentication is not configured.');
+      }
+
+      const result = await signInWithPopup(auth, googleProvider);
+      const idToken = await result.user.getIdToken();
+
+      const response = await fetch(`${serverUrl}/api/auth/firebase`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ idToken }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Firebase login failed.');
+      }
+
+      onAuthSuccess(data.token, data.user);
+    } catch (err) {
+      console.error('Google login error:', err);
+      if (err.code === 'auth/operation-not-allowed') {
+        setError('Google login is not enabled in the Firebase Console. Please go to Authentication > Sign-in method and enable Google.');
+      } else {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -111,6 +152,34 @@ export default function AuthPage({ onAuthSuccess, serverUrl }) {
             {loading ? 'Processing...' : isLogin ? 'Sign In' : 'Sign Up'}
           </button>
         </form>
+
+        {isFirebaseConfigured && (
+          <>
+            <div style={styles.dividerContainer}>
+              <div style={styles.dividerLine}></div>
+              <span style={styles.dividerText}>or continue with</span>
+              <div style={styles.dividerLine}></div>
+            </div>
+
+            <button
+              type="button"
+              disabled={loading}
+              onClick={handleGoogleSignIn}
+              style={styles.googleBtn}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+              }}
+            >
+              <FcGoogle size={20} />
+              <span>Continue with Google</span>
+            </button>
+          </>
+        )}
 
         <div style={styles.footer}>
           <p style={styles.footerText}>
@@ -254,5 +323,37 @@ const styles = {
     fontSize: '13px',
     padding: '0 4px',
     transition: 'color 0.2s',
+  },
+  dividerContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '12px',
+    margin: '8px 0',
+  },
+  dividerLine: {
+    flex: 1,
+    height: '1px',
+    background: 'rgba(255, 255, 255, 0.08)',
+  },
+  dividerText: {
+    fontSize: '12px',
+    color: 'var(--text-muted)',
+    textTransform: 'lowercase',
+  },
+  googleBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '12px',
+    width: '100%',
+    padding: '12px',
+    borderRadius: '10px',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
+    background: 'rgba(255, 255, 255, 0.04)',
+    color: 'var(--text-primary)',
+    fontWeight: '500',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
   },
 };

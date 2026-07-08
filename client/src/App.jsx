@@ -4,9 +4,9 @@ import AuthPage from './components/AuthPage';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
 import FilesPanel from './components/FilesPanel';
-import { isFirebaseConfigured, uploadFileToFirebase } from './firebase';
+import { isFirebaseConfigured, isStorageConfigured, uploadFileToFirebase } from './firebase';
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://127.0.0.1:5001';
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://127.0.0.1:4000';
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || '');
@@ -373,7 +373,7 @@ export default function App() {
 
   // Upload any file (like avatar photos) and return download URL
   const handleUploadFile = async (file) => {
-    if (isFirebaseConfigured) {
+    if (isStorageConfigured) {
       return await uploadFileToFirebase(file, 'avatars');
     } else {
       const formData = new FormData();
@@ -445,11 +445,11 @@ export default function App() {
     let fileSize = file.size;
     let fileType = file.type;
 
-    if (isFirebaseConfigured) {
+    if (isStorageConfigured) {
       console.log('Uploading file directly to Firebase Storage...');
       fileUrl = await uploadFileToFirebase(file);
     } else {
-      console.log('Firebase not configured. Using backend local file upload fallback...');
+      console.log('Firebase storage not configured. Using backend local file upload fallback...');
       const formData = new FormData();
       formData.append('file', file);
 

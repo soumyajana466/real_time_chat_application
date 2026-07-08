@@ -1,14 +1,19 @@
 import { initializeApp } from 'firebase/app';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 
-// Check if Firebase config is provided
+// Check if Firebase Auth config is provided
 const isFirebaseConfigured = !!(
   import.meta.env.VITE_FIREBASE_API_KEY &&
-  import.meta.env.VITE_FIREBASE_PROJECT_ID &&
-  import.meta.env.VITE_FIREBASE_STORAGE_BUCKET
+  import.meta.env.VITE_FIREBASE_PROJECT_ID
 );
 
+// Storage requires a bucket setup
+const isStorageConfigured = isFirebaseConfigured && !!import.meta.env.VITE_FIREBASE_STORAGE_BUCKET;
+
 let storage = null;
+let auth = null;
+let googleProvider = null;
 
 if (isFirebaseConfigured) {
   const firebaseConfig = {
@@ -22,8 +27,16 @@ if (isFirebaseConfigured) {
 
   try {
     const app = initializeApp(firebaseConfig);
-    storage = getStorage(app);
-    console.log('Firebase initialized successfully for cloud storage.');
+    auth = getAuth(app);
+    googleProvider = new GoogleAuthProvider();
+    console.log('Firebase auth initialized successfully.');
+
+    if (isStorageConfigured) {
+      storage = getStorage(app);
+      console.log('Firebase storage initialized successfully.');
+    } else {
+      console.log('Firebase storage bucket not configured. Falling back to local storage.');
+    }
   } catch (error) {
     console.error('Firebase initialization failed:', error);
   }
@@ -48,5 +61,5 @@ export async function uploadFileToFirebase(file, path = 'chat_attachments') {
   return downloadUrl;
 }
 
-export { isFirebaseConfigured, storage };
+export { isFirebaseConfigured, isStorageConfigured, storage, auth, googleProvider, signInWithPopup };
 export default storage;
